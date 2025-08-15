@@ -46,6 +46,11 @@ async function init() {
   platform = get_platform();
   browser = get_browser_name();
 
+  console.log(navigator.userAgent);
+  const h = document.createElement("h1");
+  h.textContent = navigator.userAgent;
+  document.body.appendChild(h);
+
   log(VB.INFO, "Detected browser:", browser);
   log(VB.INFO, "Detected platform:", platform);
   
