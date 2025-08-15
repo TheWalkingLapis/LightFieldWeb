@@ -8,22 +8,27 @@ let gpu_tensors = {};
 let gpu_buffers = {};
 
 let cpu_canvas_struct = {};
-const render_on_click = true;
+const canvas_callbacks = true;
 
 const backend = 'webgpu';
 let device;
 
+let platform;
+let browser;
+const supported_browsers = ["Edge", "Chrome"];
+
 let camera;
 
 const VB = {
-  NONE: 100,
-  LOG: 90,
-  TIME: 80,
-  STATUS: 20,
-  ALL: 0
+  ALL: 100,
+  STATUS: 50,
+  INFO: 40,
+  TIME: 20,
+  ERROR: 1,
+  NONE: 0
 }
 // everything >= verbose_level is printed
-const verbose_level = VB.ALL;
+const verbose_level = VB.INFO;
 
 async function start_demo() {
   await init();
@@ -34,8 +39,18 @@ async function init() {
   log(VB.STATUS, "Initalizing ...")
 
   if (!navigator.gpu) {
-    log(VB.ALL, "WebGPU is not supported on this browser.");
+    log(VB.ERROR, "WebGPU is not supported on this browser.");
     return;
+  }
+
+  platform = get_platform();
+  browser = get_browser_name();
+
+  log(VB.INFO, "Detected browser:", browser);
+  log(VB.INFO, "Detected platform:", platform);
+  
+  if (!supported_browsers.includes(browser)) {
+    log(VB.ERROR, "Detected Browser '", browser, "' is not supported and might not work properly. Use one of these browser: ", ...supported_browsers);
   }
 
   Sampler = await ort.InferenceSession.create('./models/opset_11/Sampler.onnx', {
@@ -89,8 +104,14 @@ async function init() {
 async function render() {
   await evaluate();
 
-  display_output("rgb");
-  display_output("xyz");
+  const display_start = new Date();
+  await Promise.all([
+    display_output("rgb"),
+    display_output("xyz")
+  ]);
+  const display_end = new Date();
+  const displayTime = (display_end.getTime() - display_start.getTime())/1000;
+  log(VB.TIME, "GPU->CPU Time: ", displayTime);
 }
 
 async function evaluate() {
@@ -174,16 +195,34 @@ async function create_cpu_canvas(key) {
   canvas.id = key;
   canvas.width = width;
   canvas.height = height;
-  if (render_on_click) {
-    canvas.addEventListener("mousedown", (event) => {
-      camera.mousedown_hook(event);
-    });
-    canvas.addEventListener("mouseup", (event) => {
-      camera.mouseup_hook(event);
-    });
-    canvas.addEventListener("mousemove", (event) => {
-      camera.mousemove_hook(event, render);
-    });
+  if (canvas_callbacks) {
+    if (platform == "Mobile") {
+      canvas.addEventListener("touchstart", (event) => {
+        event.preventDefault();
+        const touch = event.touches[0];
+        camera.mousedown_hook({ clientX: touch.clientX, clientY: touch.clientY });
+      });
+      canvas.addEventListener("touchend", (event) => {
+        event.preventDefault();
+        const touch = event.touches[0];
+        camera.mouseup_hook({});
+      });
+      canvas.addEventListener("touchmove", (event) => {
+        event.preventDefault();
+        const touch = event.touches[0];
+        camera.mousemove_hook({ clientX: touch.clientX, clientY: touch.clientY }, render);
+      });
+    } else {
+      canvas.addEventListener("mousedown", (event) => {
+        camera.mousedown_hook(event);
+      });
+      canvas.addEventListener("mouseup", (event) => {
+        camera.mouseup_hook(event);
+      });
+      canvas.addEventListener("mousemove", (event) => {
+        camera.mousemove_hook(event, render);
+      });
+    }
   }
   const ctx = canvas.getContext("2d");
   const imageData = ctx.createImageData(width, height);
@@ -238,8 +277,26 @@ function compareTensors(t1, t2) {
   return [maxDiff, mse];
 }
 
+function get_browser_name() {
+  const ua = navigator.userAgent;
+  let browser = "Unknown";
+  if (/Edg/i.test(ua)) browser = "Edge";
+  if (/Chrome/i.test(ua) && !/Chromium/i.test(ua)) browser = "Chrome";
+  if (/Firefox/i.test(ua)) browser = "Firefox";
+  if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = "Safari";
+  return browser;
+}
+
+function get_platform() {
+  const is_mobile = /Mobi|Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent);
+  return is_mobile ? "Mobile" : "Desktop";
+}
+
 function log(verbosity, ...txt) {
-  if (verbosity >= verbose_level) {
+  //console.log(txt)
+  //console.log(verbosity)
+  //console.log(verbose_level)
+  if (verbosity <= verbose_level) {
     console.log(...txt)
   }
 }

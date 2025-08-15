@@ -11,7 +11,7 @@ class Camera {
   phi_sensitivity = 0.01;
 
   constructor(theta, phi) {
-    phi += -0.5 * Math.PI; // rotate such that chait is ff, scene dependant though
+    phi += -0.5 * Math.PI; // rotate such that chair is ff, scene dependant though
     this.theta = Math.min(this.theta_max, Math.max(this.theta_min, theta));
     this.phi = Math.min(this.phi_max, Math.max(this.phi_min, phi));
     this.c2w = this.c2w_sphere(this.theta, this.phi, this.radius);
