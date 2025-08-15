@@ -13,6 +13,8 @@ const render_on_click = true;
 const backend = 'webgpu';
 let device;
 
+let camera;
+
 const VB = {
   NONE: 100,
   LOG: 90,
@@ -80,6 +82,8 @@ async function init() {
   document.body.appendChild(cpu_canvas_struct["xyz"]["ctx"].canvas);
 
   log(VB.STATUS, "Finished cpu canvas creation.")
+
+  camera = new Camera(0.0, 0.0);
 }
 
 async function render() {
@@ -90,9 +94,7 @@ async function render() {
 }
 
 async function evaluate() {
-  const rand_c2w = random_c2w_360();
-  log(VB.STATUS, "Random Pose: ", rand_c2w)
-  const pts = await sample(rand_c2w); // TODO use pts from gpubuffer if reshape is baked into embedder
+  const pts = await sample(); // TODO use pts from gpubuffer if reshape is baked into embedder
 
   const start = new Date();
   await R2LEngine.run({ input: pts }, { rgb: gpu_tensors["rgb"], xyz: gpu_tensors["xyz"] });
@@ -103,7 +105,8 @@ async function evaluate() {
 
 }
 
-async function sample(c2w) {
+async function sample() {
+  const c2w = camera.get_c2w_as_input();
   const c2w33 = new ort.Tensor('float32', c2w.map(row => row.slice(0, 3)).flat(), [3, 3]);
   const c2w13 = new ort.Tensor('float32', c2w.map(row => [row[3]]).flat(), [1, 3]);
 
@@ -121,67 +124,6 @@ async function sample(c2w) {
   log(VB.TIME, "Embedding Time: ", embbInferenceTime);
 
   return gpu_tensors["embb_pts"].reshape([1, 312, 100, 100]);
-}
-
-function random_c2w_360() {
-  function normalize(vec) {
-    const len = Math.sqrt(vec[0]**2 + vec[1]**2 + vec[2]**2);
-    return vec.map(v => v / len);
-  }
-
-  function cross(a, b) {
-    return [
-      a[1]*b[2] - a[2]*b[1],
-      a[2]*b[0] - a[0]*b[2],
-      a[0]*b[1] - a[1]*b[0]
-    ];
-  }
-
-  function randn_bm() {
-    let u = 0, v = 0;
-    while(u === 0) u = Math.random();
-    while(v === 0) v = Math.random();
-    return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
-  }
-
-  const radius = 1.5;
-  const minTheta = 0.017453292519943295; // ~1 deg
-  const maxTheta = 1.5707963267948966;   // 90 deg
-  const phiMin = -178 * Math.PI / 180;
-  const phiMax = 178 * Math.PI / 180;
-
-  // Sample theta with Gaussian, fallback to uniform if out of range
-  const mu = 0.5 * (minTheta + maxTheta);
-  const sigma = 0.5 * (maxTheta - minTheta);
-  let theta = mu + sigma * randn_bm();  // randn_bm() gives standard normal
-  if (theta < minTheta || theta > maxTheta) {
-      theta = Math.random() * (maxTheta - minTheta) + minTheta;
-  }
-
-  // Sample phi uniformly
-  const phi = Math.random() * (phiMax - phiMin) + phiMin;
-
-  // Convert spherical to Cartesian
-  const x = radius * Math.sin(theta) * Math.cos(phi);
-  const y = radius * Math.sin(theta) * Math.sin(phi);
-  const z = radius * Math.cos(theta);
-  const center = [x, y, z];
-
-  // Lookat axes
-  let forward = normalize(center.map(v => -v)); // look at origin
-  let up = [0, 0, -1];
-  let right = normalize(cross(up, forward));
-  up = normalize(cross(forward, right));
-
-  // Compose 3x4 pose matrix
-  const ngp_factor = 4.03112885717555/1.5;
-  const pose = [
-      [right[0], -up[0], -forward[0], ngp_factor * center[0]],
-      [right[1], -up[1], -forward[1], ngp_factor * center[1]],
-      [right[2], -up[2], -forward[2], ngp_factor * center[2]]
-  ];
-
-  return pose;
 }
 
 function gpu_tensor_from_dims(key, dims) {
@@ -233,9 +175,14 @@ async function create_cpu_canvas(key) {
   canvas.width = width;
   canvas.height = height;
   if (render_on_click) {
-    canvas.addEventListener("click", (event) => {
-      log(VB.STATUS, "Re-Render with new pose");
-      render();
+    canvas.addEventListener("mousedown", (event) => {
+      camera.mousedown_hook(event);
+    });
+    canvas.addEventListener("mouseup", (event) => {
+      camera.mouseup_hook(event);
+    });
+    canvas.addEventListener("mousemove", (event) => {
+      camera.mousemove_hook(event, render);
     });
   }
   const ctx = canvas.getContext("2d");
