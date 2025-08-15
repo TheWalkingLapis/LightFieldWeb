@@ -46,11 +46,6 @@ async function init() {
   platform = get_platform();
   browser = get_browser_name();
 
-  console.log(navigator.userAgent);
-  const h = document.createElement("h1");
-  h.textContent = navigator.userAgent;
-  document.body.appendChild(h);
-
   log(VB.INFO, "Detected browser:", browser);
   log(VB.INFO, "Detected platform:", platform);
   
@@ -298,9 +293,6 @@ function get_platform() {
 }
 
 function log(verbosity, ...txt) {
-  //console.log(txt)
-  //console.log(verbosity)
-  //console.log(verbose_level)
   if (verbosity <= verbose_level) {
     log_func = (verbosity == VB.ERROR) ? console.error : console.log;
     log_func(...txt)
