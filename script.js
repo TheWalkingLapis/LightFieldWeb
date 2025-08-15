@@ -297,6 +297,7 @@ function log(verbosity, ...txt) {
   //console.log(verbosity)
   //console.log(verbose_level)
   if (verbosity <= verbose_level) {
-    console.log(...txt)
+    log_func = (verbosity == VB.ERROR) ? console.error : console.log;
+    log_func(...txt)
   }
 }
