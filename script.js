@@ -4,17 +4,35 @@ let R2LEngine;
 
 let pts_tensor;
 let embb_pts_tensor;
-let rgb_tensor;
-let xyz_tensor;
+let gpu_tensors = {};
+let gpu_buffers = {};
+
+let cpu_canvas_struct = {};
+const render_on_click = true;
 
 const backend = 'webgpu';
 let device;
 
+const VB = {
+  NONE: 100,
+  LOG: 90,
+  TIME: 80,
+  STATUS: 20,
+  ALL: 0
+}
+// everything >= verbose_level is printed
+const verbose_level = VB.ALL;
+
+async function start_demo() {
+  await init();
+  await render();
+}
+
 async function init() {
-  console.log("Initalizing ...")
+  log(VB.STATUS, "Initalizing ...")
 
   if (!navigator.gpu) {
-    console.error("WebGPU is not supported on this browser.");
+    log(VB.ALL, "WebGPU is not supported on this browser.");
     return;
   }
 
@@ -31,52 +49,57 @@ async function init() {
   // device is definetly ready after session creation
   device = ort.env.webgpu.device;
 
-  console.log("Finished inference session creation.")
+  log(VB.STATUS, "Finished inference session creation.")
 
   sessions = [Sampler, Embedder, R2LEngine];
   strings = ["Sampler", "Embedder", "R2LEngine"];
   // List all input/output names and shapes
   sessions.forEach(session => {
-    console.log(strings[sessions.indexOf(session)], ":")
+    log(VB.STATUS, strings[sessions.indexOf(session)], ":")
     session.inputNames.forEach(name => {
         const inputMeta = session.inputMetadata[0];
-        console.log(`Input name: ${name}, shape:`, inputMeta.shape, "type:", inputMeta.type);
+        log(VB.STATUS, `Input name: ${name}, shape:`, inputMeta.shape, "type:", inputMeta.type);
     });
     session.outputNames.forEach(name => {
       const outputMeta = session.outputMetadata[0];
-      console.log(`Output name: ${name}, shape:`, outputMeta.shape, "type:", outputMeta.type);
+      log(VB.STATUS, `Output name: ${name}, shape:`, outputMeta.shape, "type:", outputMeta.type);
     });
   });
 
-  pts_tensor = gpu_tensor_from_dims([10000, 24]);
-  embb_pts_tensor = gpu_tensor_from_dims([24, 13, 10000]);
-  rgb_tensor = gpu_tensor_from_dims([1, 3, 800, 800]);
-  xyz_tensor = gpu_tensor_from_dims([1, 3, 800, 800]);
+  pts_tensor = gpu_tensor_from_dims("pts", [10000, 24]);
+  embb_pts_tensor = gpu_tensor_from_dims("embb_pts", [24, 13, 10000]);
+  rgb_tensor = gpu_tensor_from_dims("rgb", [1, 3, 800, 800]);
+  xyz_tensor = gpu_tensor_from_dims("xyz", [1, 3, 800, 800]);
 
-  console.log("Finished gpu tensor creation.")
+  log(VB.STATUS, "Finished gpu tensor creation.")
 
-  evaluate();
+  await create_cpu_canvas("rgb");
+  await create_cpu_canvas("xyz");
 
+  document.body.appendChild(cpu_canvas_struct["rgb"]["ctx"].canvas);
+  document.body.appendChild(cpu_canvas_struct["xyz"]["ctx"].canvas);
+
+  log(VB.STATUS, "Finished cpu canvas creation.")
+}
+
+async function render() {
+  await evaluate();
+
+  display_output("rgb");
+  display_output("xyz");
 }
 
 async function evaluate() {
   const rand_c2w = random_c2w_360();
-  console.log("Random Pose: ", rand_c2w)
-  const pts = await sample(rand_c2w);
+  log(VB.STATUS, "Random Pose: ", rand_c2w)
+  const pts = await sample(rand_c2w); // TODO use pts from gpubuffer if reshape is baked into embedder
 
   const start = new Date();
-  const out = await R2LEngine.run({ input: pts }); // TODO output into buffers
+  await R2LEngine.run({ input: pts }, { rgb: gpu_tensors["rgb"], xyz: gpu_tensors["xyz"] });
   const end = new Date();
-  console.log("RGB dim", out.rgb.dims)
-  console.log("XYZ dim", out.xyz.dims)
-
-
-  display_output(out.rgb.data);
-  display_output(out.xyz.data);
-
 
   const inferenceTime = (end.getTime() - start.getTime())/1000;
-  console.log("R2L Inference Time: ", inferenceTime);
+  log(VB.TIME, "R2L Inference Time: ", inferenceTime);
 
 }
 
@@ -85,24 +108,19 @@ async function sample(c2w) {
   const c2w13 = new ort.Tensor('float32', c2w.map(row => [row[3]]).flat(), [1, 3]);
 
   const sample_start = new Date();
-  await Sampler.run({ origin: c2w33, direction: c2w13}, { pts: pts_tensor });
+  await Sampler.run({ origin: c2w33, direction: c2w13}, { pts: gpu_tensors["pts"] });
   const sample_end = new Date();
-  console.log("Sampler pts dim", pts_tensor.dims)
 
   const embb_start = new Date();
-  await Embedder.run({ pts: pts_tensor }, { embbpts: embb_pts_tensor });
+  await Embedder.run({ pts: gpu_tensors["pts"] }, { embbpts: gpu_tensors["embb_pts"] });
   const embb_end = new Date();
-
-  /*console.log("Embedder pts dim", embbpts.dims)
-  const embbpts_in = new ort.Tensor('float32', embbpts.data , [1, 312, 100, 100]);
-  console.log("Embedder reshaped pts dim", embbpts_in.dims)*/
 
   const sampleInferenceTime = (sample_end.getTime() - sample_start.getTime())/1000;
   const embbInferenceTime = (embb_end.getTime() - embb_start.getTime())/1000;
-  console.log("Sample Time: ", sampleInferenceTime);
-  console.log("Embedding Time: ", embbInferenceTime);
+  log(VB.TIME, "Sample Time: ", sampleInferenceTime);
+  log(VB.TIME, "Embedding Time: ", embbInferenceTime);
 
-  return embb_pts_tensor.reshape([1, 312, 100, 100]);
+  return gpu_tensors["embb_pts"].reshape([1, 312, 100, 100]);
 }
 
 function random_c2w_360() {
@@ -166,7 +184,7 @@ function random_c2w_360() {
   return pose;
 }
 
-function gpu_tensor_from_dims(dims) {
+function gpu_tensor_from_dims(key, dims) {
   let n = 4; // float = 4 byte
   dims.forEach(i => n *= i);
 
@@ -178,18 +196,61 @@ function gpu_tensor_from_dims(dims) {
     dataType: 'float32',
     dims: dims
   });
+  
+  gpu_buffers[key] = buffer;
+  gpu_tensors[key] = tensor;
 
   return tensor;
 }
 
-function display_output(data) {
-  const [batch, channels, height, width] = [1, 3, 800, 800];
+async function gpu_to_cpu(key) {
+  const buffer = gpu_buffers[key];
+
+  // Create CPU-readable buffer
+  const readBuffer = device.createBuffer({
+    size: buffer.size,
+    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ
+  });
+
+  // Copy data from GPU-only buffer to CPU-readable buffer
+  const encoder = device.createCommandEncoder();
+  encoder.copyBufferToBuffer(buffer, 0, readBuffer, 0, buffer.size);
+  device.queue.submit([encoder.finish()]);
+
+  // Map and read
+  await readBuffer.mapAsync(GPUMapMode.READ);
+  const copyArrayBuffer = readBuffer.getMappedRange();
+  const cpuData = new Float32Array(copyArrayBuffer);
+
+  return [cpuData, readBuffer];
+}
+
+async function create_cpu_canvas(key) {
+  const [channels, height, width] = [3, 800, 800];
 
   const canvas = document.createElement("canvas");
+  canvas.id = key;
   canvas.width = width;
   canvas.height = height;
+  if (render_on_click) {
+    canvas.addEventListener("click", (event) => {
+      log(VB.STATUS, "Re-Render with new pose");
+      render();
+    });
+  }
   const ctx = canvas.getContext("2d");
   const imageData = ctx.createImageData(width, height);
+
+  cpu_canvas_struct[key] = {"ctx": ctx, "imageData": imageData};
+}
+
+async function display_output(key) {
+
+  const [data, unmap_buffer] = await gpu_to_cpu(key);
+  const [channels, height, width] = [3, 800, 800];
+  const ctx = cpu_canvas_struct[key]["ctx"];
+  const imageData = cpu_canvas_struct[key]["imageData"];
+
   const pixels = imageData.data;
 
   let pixelIndex = 0;
@@ -208,7 +269,8 @@ function display_output(data) {
   }
 
   ctx.putImageData(imageData, 0, 0);
-  document.body.appendChild(canvas);
+
+  unmap_buffer.unmap();
 }
 
 function compareTensors(t1, t2) {
@@ -229,4 +291,8 @@ function compareTensors(t1, t2) {
   return [maxDiff, mse];
 }
 
-init();
+function log(verbosity, ...txt) {
+  if (verbosity >= verbose_level) {
+    console.log(...txt)
+  }
+}
