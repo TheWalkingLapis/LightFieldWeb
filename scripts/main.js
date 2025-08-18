@@ -18,13 +18,13 @@ const VB = {
   NONE: 0
 }
 // everything >= verbose_level is printed
-const verbose_level = VB.INFO;
+const verbose_level = VB.STATUS;
 
 const RENDER_MODES = {
   CPU: "CPU",
   GPU: "GPU"
 }
-const render_mode = RENDER_MODES.GPU;
+let render_mode = RENDER_MODES.GPU;
 
 async function start_demo() {
   await init();
@@ -89,10 +89,26 @@ async function init() {
   await create_cpu_canvas("rgb");
   await create_cpu_canvas("xyz");
 
-  document.body.appendChild(cpu_canvas_struct["rgb"]["ctx"].canvas);
-  document.body.appendChild(cpu_canvas_struct["xyz"]["ctx"].canvas);
+  await create_gpu_canvas("rgb");
+  await create_gpu_canvas("xyz");
+
+  const cpu_canvas_div = document.getElementById("cpuCanvasDiv");
+  const gpu_canvas_div = document.getElementById("gpuCanvasDiv");
+  gpu_canvas_div.appendChild(gpu_canvas_struct["rgb"]["ctx"].canvas);
+  gpu_canvas_div.appendChild(gpu_canvas_struct["xyz"]["ctx"].canvas);
+
+  cpu_canvas_div.appendChild(cpu_canvas_struct["rgb"]["ctx"].canvas);
+  cpu_canvas_div.appendChild(cpu_canvas_struct["xyz"]["ctx"].canvas);
 
   log(VB.STATUS, "Finished cpu canvas creation.")
+
+  const toggleButton = document.getElementById("toggleRenderer");
+
+  toggleButton.addEventListener("click", () => {
+    render_mode = (render_mode == RENDER_MODES.CPU) ? RENDER_MODES.GPU : RENDER_MODES.CPU; // toggle the variable
+
+    log(VB.INFO, "Renderer switched to",  (render_mode == RENDER_MODES.CPU) ? "CPU" : "GPU");
+  });
 
   camera = new Camera(0.0, 0.0);
 }

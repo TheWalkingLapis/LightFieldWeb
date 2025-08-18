@@ -16,37 +16,6 @@ function compareTensors(t1, t2) {
   return [maxDiff, mse];
 }
 
-async function tensorToTexture(device, tensor, width, height) {
-  const texture = createTexture(device, width, height);
-
-  const shaderModule = device.createShaderModule({ code: shaderCode });
-  const pipeline = device.createComputePipeline({
-    layout: 'auto',
-    compute: { module: shaderModule, entryPoint: 'main' },
-  });
-
-  // Get the underlying GPU buffer from the tensor
-  const buffer = gpu_buffers[tensor];
-
-  const bindGroup = device.createBindGroup({
-    layout: pipeline.getBindGroupLayout(0),
-    entries: [
-      { binding: 0, resource: { buffer } },       // ONNX GPU tensor buffer
-      { binding: 1, resource: texture.createView() }, // Output RGBA texture
-    ],
-  });
-
-  const encoder = device.createCommandEncoder();
-  const pass = encoder.beginComputePass();
-  pass.setPipeline(pipeline);
-  pass.setBindGroup(0, bindGroup);
-  pass.dispatchWorkgroups(Math.ceil(width/8), Math.ceil(height/8));
-  pass.end();
-
-  device.queue.submit([encoder.finish()]);
-  return texture;
-}
-
 function gpu_tensor_from_dims(key, dims) {
   let n = 4; // float = 4 byte
   dims.forEach(i => n *= i);
@@ -60,7 +29,6 @@ function gpu_tensor_from_dims(key, dims) {
     dims: dims
   });
   
-  gpu_buffers[key] = buffer;
   gpu_tensors[key] = tensor;
 
   return tensor;

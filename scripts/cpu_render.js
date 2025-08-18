@@ -1,7 +1,7 @@
 let cpu_canvas_struct = {};
 
 async function gpu_to_cpu(key) {
-  const buffer = gpu_buffers[key];
+  const buffer = gpu_tensors[key].gpuBufferData;
 
   // Create CPU-readable buffer
   const readBuffer = device.createBuffer({

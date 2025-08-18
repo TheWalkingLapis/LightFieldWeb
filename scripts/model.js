@@ -5,7 +5,6 @@ let R2LEngine;
 let pts_tensor;
 let embb_pts_tensor;
 let gpu_tensors = {};
-let gpu_buffers = {};
 
 async function evaluate() {
   const pts = await sample(); // TODO use pts from gpubuffer if reshape is baked into embedder
