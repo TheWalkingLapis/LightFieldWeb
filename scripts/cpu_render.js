@@ -76,15 +76,14 @@ async function display_output_cpu(key) {
   let pixelIndex = 0;
   for (let h = 0; h < height; h++) {
     for (let w = 0; w < width; w++) {
-      // ONNX CHW format: R=channel0, G=channel1, B=channel2
       const r = data[0 * height * width + h * width + w];
       const g = data[1 * height * width + h * width + w];
       const b = data[2 * height * width + h * width + w];
 
-      pixels[pixelIndex++] = Math.min(255, Math.max(0, r * 255)); // R
-      pixels[pixelIndex++] = Math.min(255, Math.max(0, g * 255)); // G
-      pixels[pixelIndex++] = Math.min(255, Math.max(0, b * 255)); // B
-      pixels[pixelIndex++] = 255; // Alpha
+      pixels[pixelIndex++] = Math.min(255, Math.max(0, r * 255));
+      pixels[pixelIndex++] = Math.min(255, Math.max(0, g * 255));
+      pixels[pixelIndex++] = Math.min(255, Math.max(0, b * 255));
+      pixels[pixelIndex++] = 255;
     }
   }
 

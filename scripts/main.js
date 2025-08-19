@@ -22,7 +22,8 @@ const verbose_level = VB.STATUS;
 
 const RENDER_MODES = {
   CPU: "CPU",
-  GPU: "GPU"
+  GPU: "GPU",
+  //LIGHTING: "LIGHTING"
 }
 let render_mode = RENDER_MODES.GPU;
 
@@ -55,7 +56,7 @@ async function init() {
   Embedder = await ort.InferenceSession.create('./models/opset_11/Embedder.onnx', {
     executionProviders: [backend]
   });
-  R2LEngine = await ort.InferenceSession.create('./models/opset_11/ckpt.onnx', {
+  R2LEngine = await ort.InferenceSession.create('./models/opset_11/reshape_output/ckpt.onnx', {
     executionProviders: [backend]
   });
   
@@ -81,8 +82,8 @@ async function init() {
 
   pts_tensor = gpu_tensor_from_dims("pts", [10000, 24]);
   embb_pts_tensor = gpu_tensor_from_dims("embb_pts", [24, 13, 10000]);
-  rgb_tensor = gpu_tensor_from_dims("rgb", [1, 3, 800, 800]);
-  xyz_tensor = gpu_tensor_from_dims("xyz", [1, 3, 800, 800]);
+  rgb_tensor = gpu_tensor_from_dims("rgb", [1, 800, 800, 3]);
+  xyz_tensor = gpu_tensor_from_dims("xyz", [1, 800, 800, 3]);
 
   log(VB.STATUS, "Finished gpu tensor creation.")
 
@@ -91,16 +92,19 @@ async function init() {
 
   await create_gpu_canvas("rgb");
   await create_gpu_canvas("xyz");
+  //await create_gpu_canvas("lighting");
 
   const cpu_canvas_div = document.getElementById("cpuCanvasDiv");
   const gpu_canvas_div = document.getElementById("gpuCanvasDiv");
+
+  //gpu_canvas_div.appendChild(gpu_canvas_struct["lighting"]["ctx"].canvas);
   gpu_canvas_div.appendChild(gpu_canvas_struct["rgb"]["ctx"].canvas);
   gpu_canvas_div.appendChild(gpu_canvas_struct["xyz"]["ctx"].canvas);
 
   cpu_canvas_div.appendChild(cpu_canvas_struct["rgb"]["ctx"].canvas);
   cpu_canvas_div.appendChild(cpu_canvas_struct["xyz"]["ctx"].canvas);
 
-  log(VB.STATUS, "Finished cpu canvas creation.")
+  log(VB.STATUS, "Finished canvas creation.")
 
   const toggleButton = document.getElementById("toggleRenderer");
 
@@ -109,6 +113,10 @@ async function init() {
 
     log(VB.INFO, "Renderer switched to",  (render_mode == RENDER_MODES.CPU) ? "CPU" : "GPU");
   });
+
+  buffer_to_texture_shader_code = await fetch("./shader/buffer_to_texture.wgsl").then(r => r.text());
+  render_texture_shader_code = await fetch("./shader/render_texture.wgsl").then(r => r.text());
+  lighting_shader_code = await fetch("./shader/lighting.wgsl").then(r => r.text());
 
   camera = new Camera(0.0, 0.0);
 }
@@ -136,5 +144,15 @@ async function render() {
       const display_end_gpu = new Date();
       const displayTimeGPU = (display_end_gpu.getTime() - display_start_gpu.getTime())/1000;
       log(VB.TIME, "Render Time (GPU): ", displayTimeGPU);
+      break;
+    case RENDER_MODES.LIGHTING:
+      const display_start_lighting = new Date();
+      await Promise.all([
+        display_output_gpu("lighting")
+      ]);
+      const display_end_lighting = new Date();
+      const displayTimeLIGHTING = (display_end_lighting.getTime() - display_start_lighting.getTime())/1000;
+      log(VB.TIME, "Render Time (GPU): ", displayTimeLIGHTING);
+      break;
   }
 }
