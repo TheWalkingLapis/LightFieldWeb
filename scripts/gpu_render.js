@@ -1,8 +1,70 @@
 let gpu_canvas_struct = {};
+let intermediate_gpu_textures = {};
+let webgpu_command_display_texture = {};
+let webgpu_command_buffer_to_texture = {};
 
 let buffer_to_texture_shader_code;
 let render_texture_shader_code;
 let lighting_shader_code;
+
+async function init_gpu_render() {
+  buffer_to_texture_shader_code = await fetch("./shader/buffer_to_texture.wgsl").then(r => r.text());
+  render_texture_shader_code = await fetch("./shader/render_texture.wgsl").then(r => r.text());
+  lighting_shader_code = await fetch("./shader/lighting.wgsl").then(r => r.text());
+
+  await create_gpu_canvas("rgb");
+  await create_gpu_canvas("xyz");
+  //await create_gpu_canvas("lighting");
+
+  const gpu_canvas_div = document.getElementById("gpuCanvasDiv");
+
+  //gpu_canvas_div.appendChild(gpu_canvas_struct["lighting"]["ctx"].canvas);
+  gpu_canvas_div.appendChild(gpu_canvas_struct["rgb"]["ctx"].canvas);
+  gpu_canvas_div.appendChild(gpu_canvas_struct["xyz"]["ctx"].canvas);
+
+  await create_gpu_intermediate_texture("rgb");
+  await create_gpu_intermediate_texture("xyz");
+
+  {
+    const shader_module = device.createShaderModule({ code: buffer_to_texture_shader_code });
+    const pipeline = device.createComputePipeline({
+      layout: "auto",
+      compute: { module: shader_module, entryPoint: "main" }
+    });
+    webgpu_command_buffer_to_texture["pipeline"] = pipeline;
+    webgpu_command_buffer_to_texture["bindGroupLayout"] = pipeline.getBindGroupLayout(0);
+  }
+  {
+    const format = navigator.gpu.getPreferredCanvasFormat();
+    const shaderModule = device.createShaderModule({ code: render_texture_shader_code });
+    const pipeline = device.createRenderPipeline({
+      layout: "auto",
+      vertex: { module: shaderModule, entryPoint: "vsMain" },
+      fragment: {
+        module: shaderModule,
+        entryPoint: "fsMain",
+        targets: [{ format }]
+      },
+      primitive: { topology: "triangle-list" }
+    });
+    webgpu_command_display_texture["pipeline"] = pipeline;
+    const sampler = device.createSampler({
+      magFilter: "linear",
+      minFilter: "linear"
+    });
+    webgpu_command_display_texture["sampler"] = sampler;
+    webgpu_command_display_texture["bindGroupLayout"] = pipeline.getBindGroupLayout(0);
+  }
+}
+
+async function create_gpu_intermediate_texture(key) {
+  const tex = device.createTexture({
+    size: [800, 800],
+    format: "rgba8unorm",
+    usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.STORAGE_BINDING
+  });
+  intermediate_gpu_textures[key] = tex;
+}
 
 async function create_gpu_canvas(key) {
   const [channels, height, width] = [3, 800, 800];
@@ -59,34 +121,15 @@ async function display_output_gpu(key = "") {
     case RENDER_MODES.GPU:
       const context = gpu_canvas_struct[key]["ctx"];
 
-      const display_texture = device.createTexture({
-        size: [800, 800],
-        format: "rgba8unorm",
-        usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.STORAGE_BINDING
-      });
+      const display_texture = intermediate_gpu_textures[key];
 
       await dispatch_buffer_to_texture(key, display_texture);
 
-      const render_shaderModule = device.createShaderModule({ code: render_texture_shader_code });
-
-      const render_pipeline = device.createRenderPipeline({
-        layout: "auto",
-        vertex: { module: render_shaderModule, entryPoint: "vsMain" },
-        fragment: {
-          module: render_shaderModule,
-          entryPoint: "fsMain",
-          targets: [{ format }]
-        },
-        primitive: { topology: "triangle-list" }
-      });
-
-      const render_sampler = device.createSampler({
-        magFilter: "linear",
-        minFilter: "linear"
-      });
+      const render_pipeline = webgpu_command_display_texture["pipeline"];
+      const render_sampler = webgpu_command_display_texture["sampler"];
 
       const render_bindGroup = device.createBindGroup({
-        layout: render_pipeline.getBindGroupLayout(0),
+        layout: webgpu_command_display_texture["bindGroupLayout"],
         entries: [
           { binding: 0, resource: display_texture.createView() },
           { binding: 1, resource: render_sampler }
@@ -109,13 +152,13 @@ async function display_output_gpu(key = "") {
       render_pass.draw(6);
       render_pass.end();
 
-      const render_start = new Date();
+      const render_start = performance.now();
       device.queue.submit([render_encoder.finish()]);
       await device.queue.onSubmittedWorkDone();
-      const render_end = new Date();
+      const render_end = performance.now();
 
       
-      const renderTimeGPU = (render_end.getTime() - render_start.getTime())/1000;
+      const renderTimeGPU = (render_end - render_start)/1000;
       log(VB.TIME, "Render Canvas Time (GPU): ", renderTimeGPU);
       break;
 
@@ -123,16 +166,8 @@ async function display_output_gpu(key = "") {
     case RENDER_MODES.LIGHTING:
       const lighting_context = gpu_canvas_struct[key]["ctx"];
 
-      const rgb_texture = device.createTexture({
-        size: [800, 800],
-        format: "rgba8unorm",
-        usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.STORAGE_BINDING
-      });
-      const xyz_texture = device.createTexture({
-        size: [800, 800],
-        format: "rgba8unorm",
-        usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.STORAGE_BINDING
-      });
+      const rgb_texture = intermediate_gpu_textures["rgb"];
+      const xyz_texture = intermediate_gpu_textures["xyz"];
 
       await dispatch_buffer_to_texture("rgb", rgb_texture);
       await dispatch_buffer_to_texture("xyz", xyz_texture);
@@ -191,13 +226,13 @@ async function display_output_gpu(key = "") {
       lighting_pass.draw(6);
       lighting_pass.end();
 
-      const lighting_start = new Date();
+      const lighting_start = performance.now();
       device.queue.submit([lighting_encoder.finish()]);
       await device.queue.onSubmittedWorkDone();
-      const lighting_end = new Date();
+      const lighting_end = performance.now();
 
       
-      const lightingTimeGPU = (lighting_end.getTime() - lighting_start.getTime())/1000;
+      const lightingTimeGPU = (lighting_end - lighting_start)/1000;
       log(VB.TIME, "Render Canvas Time (GPU): ", lightingTimeGPU);
       break;
   }
@@ -207,15 +242,10 @@ async function display_output_gpu(key = "") {
 async function dispatch_buffer_to_texture(key, texture) {
   const buffer = gpu_tensors[key].gpuBufferData;
 
-  const shader_module = device.createShaderModule({ code: buffer_to_texture_shader_code });
-
-  const pipeline = device.createComputePipeline({
-    layout: "auto",
-    compute: { module: shader_module, entryPoint: "main" }
-  });
+  const pipeline = webgpu_command_buffer_to_texture["pipeline"];
 
   const bind_group = device.createBindGroup({
-    layout: pipeline.getBindGroupLayout(0),
+    layout: webgpu_command_buffer_to_texture["bindGroupLayout"],
     entries: [
       { binding: 0, resource: { buffer: buffer } },
       { binding: 1, resource: texture.createView() }
@@ -228,11 +258,11 @@ async function dispatch_buffer_to_texture(key, texture) {
   pass.setBindGroup(0, bind_group);
   pass.dispatchWorkgroups(Math.ceil(800/8), Math.ceil(800/8));
   pass.end();
-  const timer_start = new Date();
+  const timer_start = performance.now();
   device.queue.submit([encoder.finish()]);
   await device.queue.onSubmittedWorkDone();
-  const timer_end = new Date();
+  const timer_end = performance.now();
 
-  const buf_to_tex_time = (timer_end.getTime() - timer_start.getTime())/1000;
+  const buf_to_tex_time = (timer_end - timer_start)/1000;
   log(VB.TIME, "Buffer to Texture Time (GPU): ", buf_to_tex_time);
 }

@@ -76,9 +76,10 @@ async function display_output_cpu(key) {
   let pixelIndex = 0;
   for (let h = 0; h < height; h++) {
     for (let w = 0; w < width; w++) {
-      const r = data[0 * height * width + h * width + w];
-      const g = data[1 * height * width + h * width + w];
-      const b = data[2 * height * width + h * width + w];
+      const idx = (h * width + w) * 3
+      const r = data[idx + 0];
+      const g = data[idx + 1];
+      const b = data[idx + 2];
 
       pixels[pixelIndex++] = Math.min(255, Math.max(0, r * 255));
       pixels[pixelIndex++] = Math.min(255, Math.max(0, g * 255));

@@ -33,6 +33,7 @@ async function start_demo() {
 }
 
 async function init() {
+
   log(VB.STATUS, "Initalizing ...")
 
   if (!navigator.gpu) {
@@ -90,16 +91,9 @@ async function init() {
   await create_cpu_canvas("rgb");
   await create_cpu_canvas("xyz");
 
-  await create_gpu_canvas("rgb");
-  await create_gpu_canvas("xyz");
-  //await create_gpu_canvas("lighting");
+  await init_gpu_render();
 
   const cpu_canvas_div = document.getElementById("cpuCanvasDiv");
-  const gpu_canvas_div = document.getElementById("gpuCanvasDiv");
-
-  //gpu_canvas_div.appendChild(gpu_canvas_struct["lighting"]["ctx"].canvas);
-  gpu_canvas_div.appendChild(gpu_canvas_struct["rgb"]["ctx"].canvas);
-  gpu_canvas_div.appendChild(gpu_canvas_struct["xyz"]["ctx"].canvas);
 
   cpu_canvas_div.appendChild(cpu_canvas_struct["rgb"]["ctx"].canvas);
   cpu_canvas_div.appendChild(cpu_canvas_struct["xyz"]["ctx"].canvas);
@@ -114,10 +108,6 @@ async function init() {
     log(VB.INFO, "Renderer switched to",  (render_mode == RENDER_MODES.CPU) ? "CPU" : "GPU");
   });
 
-  buffer_to_texture_shader_code = await fetch("./shader/buffer_to_texture.wgsl").then(r => r.text());
-  render_texture_shader_code = await fetch("./shader/render_texture.wgsl").then(r => r.text());
-  lighting_shader_code = await fetch("./shader/lighting.wgsl").then(r => r.text());
-
   camera = new Camera(0.0, 0.0);
 }
 
@@ -126,32 +116,32 @@ async function render() {
 
   switch (render_mode) {
     case RENDER_MODES.CPU:
-      const display_start_cpu = new Date();
+      const display_start_cpu = performance.now();
       await Promise.all([
         display_output_cpu("rgb"),
         display_output_cpu("xyz")
       ]);
-      const display_end_cpu = new Date();
-      const displayTimeCPU = (display_end_cpu.getTime() - display_start_cpu.getTime())/1000;
+      const display_end_cpu = performance.now();
+      const displayTimeCPU = (display_end_cpu - display_start_cpu)/1000;
       log(VB.TIME, "GPU->CPU Time: ", displayTimeCPU);
       break;
     case RENDER_MODES.GPU:
-      const display_start_gpu = new Date();
+      const display_start_gpu = performance.now();
       await Promise.all([
         display_output_gpu("rgb"),
         display_output_gpu("xyz")
       ]);
-      const display_end_gpu = new Date();
-      const displayTimeGPU = (display_end_gpu.getTime() - display_start_gpu.getTime())/1000;
+      const display_end_gpu = performance.now();
+      const displayTimeGPU = (display_end_gpu - display_start_gpu)/1000;
       log(VB.TIME, "Render Time (GPU): ", displayTimeGPU);
       break;
     case RENDER_MODES.LIGHTING:
-      const display_start_lighting = new Date();
+      const display_start_lighting = performance.now();
       await Promise.all([
         display_output_gpu("lighting")
       ]);
-      const display_end_lighting = new Date();
-      const displayTimeLIGHTING = (display_end_lighting.getTime() - display_start_lighting.getTime())/1000;
+      const display_end_lighting = performance.now();
+      const displayTimeLIGHTING = (display_end_lighting - display_start_lighting)/1000;
       log(VB.TIME, "Render Time (GPU): ", displayTimeLIGHTING);
       break;
   }
