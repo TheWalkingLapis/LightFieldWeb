@@ -14,11 +14,12 @@ async function init_gpu_render() {
 
   await create_gpu_canvas("rgb");
   await create_gpu_canvas("xyz");
-  //await create_gpu_canvas("lighting");
+  await create_gpu_canvas("lighting");
 
   const gpu_canvas_div = document.getElementById("gpuCanvasDiv");
+  const lighting_canvas_div = document.getElementById("lightingCanvasDiv");
 
-  //gpu_canvas_div.appendChild(gpu_canvas_struct["lighting"]["ctx"].canvas);
+  lighting_canvas_div.appendChild(gpu_canvas_struct["lighting"]["ctx"].canvas);
   gpu_canvas_div.appendChild(gpu_canvas_struct["rgb"]["ctx"].canvas);
   gpu_canvas_div.appendChild(gpu_canvas_struct["xyz"]["ctx"].canvas);
 
@@ -190,7 +191,9 @@ async function display_output_gpu(key = "") {
         minFilter: "linear"
       });
 
-      const lighting_uniform_data = new Float32Array([0.0, 10.0, 0.0, 0.0]); // vec3 + padding
+      const cam_pos = camera.get_position();
+      log(VB.INFO, "camera position:", cam_pos);
+      const lighting_uniform_data = new Float32Array([0.0, 10.0, 0.0, 0.0, cam_pos[0], cam_pos[1], cam_pos[2], 0.0]); // uinforms including padding
 
       const lighting_uniform_buffer = device.createBuffer({
         size: lighting_uniform_data.byteLength,

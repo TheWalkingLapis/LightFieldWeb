@@ -80,6 +80,10 @@ class Camera {
     return this.c2w_to_input(this.c2w);
   }
 
+  get_position() {
+    return this.c2w.map(row => [row[3]]).flat();
+  }
+
   mousedown_hook(event) {
     this.isDragging = true;
     this.pendingUpdate = false;

@@ -100,12 +100,23 @@ async function init() {
 
   log(VB.STATUS, "Finished canvas creation.")
 
-  const toggleButton = document.getElementById("toggleRenderer");
-
+  let toggleButton = document.getElementById("toggleCPURenderer");
   toggleButton.addEventListener("click", () => {
-    render_mode = (render_mode == RENDER_MODES.CPU) ? RENDER_MODES.GPU : RENDER_MODES.CPU; // toggle the variable
+    render_mode = RENDER_MODES.CPU;
 
-    log(VB.INFO, "Renderer switched to",  (render_mode == RENDER_MODES.CPU) ? "CPU" : "GPU");
+    log(VB.INFO, "Renderer switched to CPU");
+  });
+  toggleButton = document.getElementById("toggleGPURenderer");
+  toggleButton.addEventListener("click", () => {
+    render_mode = RENDER_MODES.GPU;
+
+    log(VB.INFO, "Renderer switched to GPU");
+  });
+  toggleButton = document.getElementById("toggleLIGHTINGRenderer");
+  toggleButton.addEventListener("click", () => {
+    render_mode = RENDER_MODES.LIGHTING;
+
+    log(VB.INFO, "Renderer switched to Shader");
   });
 
   camera = new Camera(0.0, 0.0);

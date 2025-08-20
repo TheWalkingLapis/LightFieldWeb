@@ -9,8 +9,10 @@ fn vsMain(@builtin(vertex_index) idx : u32) -> @builtin(position) vec4f {
 }
 
 struct LightingUniforms {
-    light_pos : vec3<f32>,   
-    _pad  : f32,         // padding for 16-byte alignment
+    light_pos : vec3<f32>,
+    pad: f32,
+    cam_pos : vec3<f32>,
+    _pad: f32
 };
 
 // Fragment shader: samples your rgba8unorm texture
@@ -22,10 +24,23 @@ struct LightingUniforms {
 @fragment
 fn fsMain(@builtin(position) pos : vec4f) -> @location(0) vec4f {
     let uv = pos.xy / vec2f(800.0, 800.0); // normalized coordinates
-    let xyz = textureSample(rgbTex, texSampler, uv).xyz;
-    let rgb = textureSample(xyzTex, texSampler, uv).rgb;
+    let xyz = textureSample(rgbTex, texSampler, uv).xyz * 2.0 - 1.0;
+    let rgb = textureSample(xyzTex, texSampler, uv).rgb * 2.0 - 1.0;
+
+    let epsilon = 0.01;
+    if (length(xyz) < epsilon) {
+        discard;
+    }
 
     let light_dir = normalize(uniforms.light_pos);
+    let cam_pos = uniforms.cam_pos;
+
+    let cam_to_world = xyz - cam_pos;
+    let depth = (3.0 - length(cam_to_world)) / 3; // assume camera radius (1.5) to be at min/max depth
+
+    return vec4f(vec3f(depth), 1.0);
+
+    /*
 
     let texSize = vec2f(800.0, 800.0);
     let offsetX = vec2<f32>(1.0 / texSize.x, 0.0);
@@ -41,9 +56,11 @@ fn fsMain(@builtin(position) pos : vec4f) -> @location(0) vec4f {
 
     //let dx = dpdxFine(xyz);
     //let dy = dpdyFine(xyz);
-    let normal = -normalize(cross(dy, dx));
+    let normal = -normalize(cross(dx, dy));
     let diffuse = max(dot(normal, light_dir), 0.0);
 
     //return vec4f(vec3f(diffuse), 1.0);
-    return vec4f(diffuse * rgb, 1.0);
+    return vec4f(normal, 1.0);
+    */
+
 }

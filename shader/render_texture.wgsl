@@ -15,5 +15,6 @@ fn vsMain(@builtin(vertex_index) idx : u32) -> @builtin(position) vec4f {
 @fragment
 fn fsMain(@builtin(position) pos : vec4f) -> @location(0) vec4f {
     let uv = pos.xy / vec2f(800.0, 800.0); // normalized coordinates
-    return textureSample(myTex, mySampler, uv);
+    let value = textureSample(myTex, mySampler, uv);
+    return vec4f(vec3f(value.xyz) * 2.0 - 1.0, 1.0);
 }
