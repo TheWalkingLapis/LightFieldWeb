@@ -13,17 +13,34 @@
     <script src="./scripts/cpu_render.js"></script>
     <script src="./scripts/gpu_render.js"></script>
     <script src="./scripts/main.js"></script>
+
+    <style>
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, 400px);
+        grid-template-rows: repeat(2, 400px);
+        gap: 0px;
+      }
+      .container {
+        display: flex;
+        gap: 0px;
+        align-items: flex-start;
+      }
+    </style>
   </head>
 
   <body>
     <div id="buttonDiv">
       <button id="toggleCPURenderer">Switch CPU display</button>
-      <button id="toggleGPURenderer">Switch GPU display</button>
       <button id="toggleLIGHTINGRenderer">Switch Shader display</button>
     </div>
-    <div id="lightingCanvasDiv"></div>
-    <div id="gpuCanvasDiv"></div>
-    <div id="cpuCanvasDiv"></div>
+    <div id="gpuSection" class="container">
+      <div id="lightingCanvasDiv"></div>
+      <div id="gpuCanvasDiv" class="grid"></div>
+    </div>
+    <div id="cpuSection">
+      <div id="cpuCanvasDiv"></div>
+    </div>
     <script>
       start_demo();
     </script>
