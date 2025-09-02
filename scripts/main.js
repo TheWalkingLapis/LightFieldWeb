@@ -125,6 +125,8 @@ async function init() {
 
     log(VB.INFO, "Renderer switched to Shader");
   });
+
+  render();
 }
 
 async function render() {
