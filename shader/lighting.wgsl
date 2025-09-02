@@ -18,14 +18,18 @@ struct LightingUniforms {
 // Fragment shader: samples your rgba8unorm texture
 @group(0) @binding(0) var rgbTex : texture_2d<f32>;
 @group(0) @binding(1) var xyzTex : texture_2d<f32>;
-@group(0) @binding(2) var texSampler : sampler;
-@group(0) @binding(3) var<uniform> uniforms : LightingUniforms;
+@group(0) @binding(2) var normalTex : texture_2d<f32>;
+@group(0) @binding(3) var maskTex : texture_2d<f32>;
+@group(0) @binding(4) var texSampler : sampler;
+@group(0) @binding(5) var<uniform> uniforms : LightingUniforms;
 
 @fragment
 fn fsMain(@builtin(position) pos : vec4f) -> @location(0) vec4f {
     let uv = pos.xy / vec2f(800.0, 800.0); // normalized coordinates
-    let xyz = textureSample(rgbTex, texSampler, uv).xyz * 2.0 - 1.0;
-    let rgb = textureSample(xyzTex, texSampler, uv).rgb * 2.0 - 1.0;
+    let rgb = textureSample(rgbTex, texSampler, uv).rgb * 2.0 - 1.0;
+    let xyz = textureSample(xyzTex, texSampler, uv).rgb;// * 2.0 - 1.0;
+    let normal = textureSample(normalTex, texSampler, uv).rgb * 2.0 - 1.0;
+    let mask = textureSample(maskTex, texSampler, uv).r * 2.0 - 1.0;
 
     let epsilon = 0.01;
     if (length(xyz) < epsilon) {
@@ -35,32 +39,20 @@ fn fsMain(@builtin(position) pos : vec4f) -> @location(0) vec4f {
     let light_dir = normalize(uniforms.light_pos);
     let cam_pos = uniforms.cam_pos;
 
-    let cam_to_world = xyz - cam_pos;
-    let depth = (3.0 - length(cam_to_world)) / 3; // assume camera radius (1.5) to be at min/max depth
+    let cam_to_object = xyz - cam_pos;
+    let depth = (length(cam_to_object) - 1) / 2; // world pos in [-.5, .5] -> depth in [1, 2]
 
-    return vec4f(vec3f(depth), 1.0);
+    //return vec4f(vec3f(depth), 1.0);
+    let diffuse = max(dot(normal, light_dir), 0.0) * rgb;
 
-    /*
+    if (mask < 0.01) {
+        //return vec4f(1.0, 1.0, 1.0, 1.0);    
+        //if (dot(-normalize(cam_pos), light_dir) > 0.8) {
+        //    return vec4f(0.0, 0.0, 0.0, 1.0);
+        //}
+        return vec4f(1.0, 1.0, 1.0, 1.0);
+    }
 
-    let texSize = vec2f(800.0, 800.0);
-    let offsetX = vec2<f32>(1.0 / texSize.x, 0.0);
-    let offsetY = vec2<f32>(0.0, 1.0 / texSize.y);
-
-    // Sample neighboring positions
-    let posR = textureSample(xyzTex, texSampler, uv + offsetX).xyz;
-    let posU = textureSample(xyzTex, texSampler, uv + offsetY).xyz;
-
-    // Compute screen-space derivatives
-    let dx = posR - xyz;
-    let dy = posU - xyz;
-
-    //let dx = dpdxFine(xyz);
-    //let dy = dpdyFine(xyz);
-    let normal = -normalize(cross(dx, dy));
-    let diffuse = max(dot(normal, light_dir), 0.0);
-
-    //return vec4f(vec3f(diffuse), 1.0);
-    return vec4f(normal, 1.0);
-    */
+    return vec4f(diffuse * mask, 1.0);
 
 }

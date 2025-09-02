@@ -10,7 +10,7 @@ async function evaluate() {
   const pts = await sample(); // TODO use pts from gpubuffer if reshape is baked into embedder
 
   const start = performance.now();
-  await R2LEngine.run({ input: pts }, { rgb: gpu_tensors["rgb"], xyz: gpu_tensors["xyz"] });
+  await R2LEngine.run({ input: pts }, { rgb: gpu_tensors["rgb"], xyz: gpu_tensors["xyz"], normal: gpu_tensors["normal"], mask: gpu_tensors["mask"] });
   const end = performance.now();
 
   const inferenceTime = (end - start)/1000;
