@@ -44,8 +44,9 @@ fn fsMain(@builtin(position) pos : vec4f) -> @location(0) vec4f {
 
     //return vec4f(vec3f(depth), 1.0);
     let diffuse = max(dot(normal, light_dir), 0.0) * rgb;
+    let ambient = vec3f(1.0, 1.0, 1.0) * 0.1;
 
-    if (mask < 0.01) {
+    if (mask < 0.001) {
         //return vec4f(1.0, 1.0, 1.0, 1.0);    
         //if (dot(-normalize(cam_pos), light_dir) > 0.8) {
         //    return vec4f(0.0, 0.0, 0.0, 1.0);
@@ -53,6 +54,6 @@ fn fsMain(@builtin(position) pos : vec4f) -> @location(0) vec4f {
         return vec4f(1.0, 1.0, 1.0, 1.0);
     }
 
-    return vec4f(diffuse * mask, 1.0);
+    return vec4f((ambient + diffuse) * mask, 1.0);
 
 }
