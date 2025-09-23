@@ -38,3 +38,19 @@ async function sample() {
 
   return gpu_tensors["embb_pts"].reshape([1, 312, 100, 100]);
 }
+
+async function save_outputs() {
+  async function save_tensor_as_bin(key, filename) {
+    const data = await gpu_tensors[key].toData();
+    const blob = new Blob([data.buffer], { type: "application/octet-stream" });
+
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+  }
+  save_tensor_as_bin("rgb", "rgb.bin")
+  save_tensor_as_bin("xyz", "xyz.bin")
+  save_tensor_as_bin("normal", "normal.bin")
+  save_tensor_as_bin("mask", "mask.bin")
+}
