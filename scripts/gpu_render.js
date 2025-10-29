@@ -13,9 +13,6 @@ async function init_gpu_render() {
   lighting_shader_code = await fetch("./shader/lighting.wgsl").then(r => r.text());
 
   await create_gpu_canvas("rgb");
-  await create_gpu_canvas("xyz");
-  await create_gpu_canvas("normal");
-  await create_gpu_canvas("mask");
   await create_gpu_canvas("lighting");
 
   const gpu_canvas_div = document.getElementById("gpuCanvasDiv");
@@ -23,14 +20,8 @@ async function init_gpu_render() {
 
   lighting_canvas_div.appendChild(gpu_canvas_struct["lighting"]["ctx"].canvas);
   gpu_canvas_div.appendChild(gpu_canvas_struct["rgb"]["ctx"].canvas);
-  gpu_canvas_div.appendChild(gpu_canvas_struct["xyz"]["ctx"].canvas);
-  gpu_canvas_div.appendChild(gpu_canvas_struct["normal"]["ctx"].canvas);
-  gpu_canvas_div.appendChild(gpu_canvas_struct["mask"]["ctx"].canvas);
 
   await create_gpu_intermediate_texture("rgb");
-  await create_gpu_intermediate_texture("xyz");
-  await create_gpu_intermediate_texture("normal");
-  await create_gpu_intermediate_texture("mask");
 
   {
     const shader_module = device.createShaderModule({ code: buffer_to_texture_shader_code });
@@ -103,14 +94,8 @@ async function display_output_gpu(key = "") {
       const lighting_context = gpu_canvas_struct[key]["ctx"];
 
       const rgb_texture = intermediate_gpu_textures["rgb"];
-      const xyz_texture = intermediate_gpu_textures["xyz"];
-      const normal_texture = intermediate_gpu_textures["normal"];
-      const mask_texture = intermediate_gpu_textures["mask"];
 
       await dispatch_buffer_to_texture("rgb", rgb_texture);
-      await dispatch_buffer_to_texture("xyz", xyz_texture);
-      await dispatch_buffer_to_texture("normal", normal_texture);
-      await dispatch_buffer_to_texture("mask", mask_texture);
 
       const lighting_shaderModule = device.createShaderModule({ code: lighting_shader_code });
 

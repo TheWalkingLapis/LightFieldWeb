@@ -2,17 +2,11 @@ let cpu_canvas_struct = {};
 
 async function init_cpu_render() {
     await create_cpu_canvas("rgb");
-    await create_cpu_canvas("xyz");
-    await create_cpu_canvas("normal");
-    await create_cpu_canvas("mask");
 
       
     const cpu_canvas_div = document.getElementById("cpuCanvasDiv");
 
     cpu_canvas_div.appendChild(cpu_canvas_struct["rgb"]["ctx"].canvas);
-    cpu_canvas_div.appendChild(cpu_canvas_struct["xyz"]["ctx"].canvas);
-    cpu_canvas_div.appendChild(cpu_canvas_struct["normal"]["ctx"].canvas);
-    cpu_canvas_div.appendChild(cpu_canvas_struct["mask"]["ctx"].canvas);
 }
 
 async function gpu_to_cpu(key) {

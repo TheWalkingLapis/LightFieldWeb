@@ -52,13 +52,13 @@ async function init() {
     log(VB.ERROR, "Detected Browser '", browser, "' is not supported and might not work properly. Use one of these browser: ", ...supported_browsers);
   }
 
-  Sampler = await ort.InferenceSession.create('./models/opset_11/all_outputs/Sampler.onnx', {
+  Sampler = await ort.InferenceSession.create('./models/MR2L/Sampler.onnx', {
     executionProviders: [backend]
   });
-  Embedder = await ort.InferenceSession.create('./models/opset_11/all_outputs/Embedder.onnx', {
+  Embedder = await ort.InferenceSession.create('./models/MR2L/Embedder.onnx', {
     executionProviders: [backend]
   });
-  R2LEngine = await ort.InferenceSession.create('./models/opset_11/all_outputs//ckpt.onnx', {
+  R2LEngine = await ort.InferenceSession.create('./models/MR2L/ckpt.onnx', {
     executionProviders: [backend]
   });
   
@@ -86,9 +86,6 @@ async function init() {
   pts_tensor = gpu_tensor_from_dims("pts", [10000, 24]);
   embb_pts_tensor = gpu_tensor_from_dims("embb_pts", [24, 13, 10000]);
   rgb_tensor = gpu_tensor_from_dims("rgb", [1, 800, 800, 3]);
-  xyz_tensor = gpu_tensor_from_dims("xyz", [1, 800, 800, 3]);
-  normal_tensor = gpu_tensor_from_dims("normal", [1, 800, 800, 3]);
-  mask_tensor = gpu_tensor_from_dims("mask", [1, 800, 800, 1]);
 
   log(VB.STATUS, "Finished gpu tensor creation.")
 
@@ -119,9 +116,9 @@ async function init() {
   });
   toggleButton = document.getElementById("toggleLIGHTINGRenderer");
   toggleButton.addEventListener("click", () => {
-    render_mode = RENDER_MODES.LIGHTING;
-    gpuSection.style.display = "flex";
-    cpuSection.style.display = "none";
+    render_mode = RENDER_MODES.GPU;
+    gpuSection.style.display = "none";
+    cpuSection.style.display = "block";
 
     log(VB.INFO, "Renderer switched to Shader");
   });
@@ -136,10 +133,7 @@ async function render() {
     case RENDER_MODES.CPU:
       const display_start_cpu = performance.now();
       await Promise.all([
-        display_output_cpu("rgb"),
-        display_output_cpu("xyz"),
-        display_output_cpu("normal"),
-        display_output_cpu("mask")
+        display_output_cpu("rgb")
       ]);
       const display_end_cpu = performance.now();
       const displayTimeCPU = (display_end_cpu - display_start_cpu)/1000;
@@ -149,10 +143,7 @@ async function render() {
     case RENDER_MODES.GPU:
       const display_start_gpu = performance.now();
       await Promise.all([
-        display_output_gpu("rgb"),
-        display_output_gpu("xyz"),
-        display_output_gpu("normal"),
-        display_output_gpu("mask")
+        display_output_gpu("rgb")
       ]);
       const display_end_gpu = performance.now();
       const displayTimeGPU = (display_end_gpu - display_start_gpu)/1000;
@@ -162,11 +153,7 @@ async function render() {
     case RENDER_MODES.LIGHTING:
       const display_start_lighting = performance.now();
       await Promise.all([
-        display_output_gpu("lighting"),
-        display_output_gpu("rgb"),
-        display_output_gpu("xyz"),
-        display_output_gpu("normal"),
-        display_output_gpu("mask")
+        display_output_gpu("rgb")
       ]);
       const display_end_lighting = performance.now();
       const displayTimeLIGHTING = (display_end_lighting - display_start_lighting)/1000;

@@ -10,7 +10,7 @@ async function evaluate() {
   const pts = await sample(); // TODO use pts from gpubuffer if reshape is baked into embedder
 
   const start = performance.now();
-  await R2LEngine.run({ input: pts }, { rgb: gpu_tensors["rgb"], xyz: gpu_tensors["xyz"], normal: gpu_tensors["normal"], mask: gpu_tensors["mask"] });
+  await R2LEngine.run({ input: pts }, { rgb: gpu_tensors["rgb"] });
   const end = performance.now();
 
   const inferenceTime = (end - start)/1000;
@@ -50,7 +50,4 @@ async function save_outputs() {
     a.click();
   }
   save_tensor_as_bin("rgb", "rgb.bin")
-  save_tensor_as_bin("xyz", "xyz.bin")
-  save_tensor_as_bin("normal", "normal.bin")
-  save_tensor_as_bin("mask", "mask.bin")
 }
