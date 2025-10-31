@@ -28,9 +28,20 @@ const RENDER_MODES = {
 }
 let render_mode = RENDER_MODES.LIGHTING;
 
+
+let times = [];
+
 async function start_demo() {
   await init();
-  await render("naive_lego", 0);
+  await render("naive_lego", 1);
+  times = [];
+  for (let idx = 0; idx < 25; idx++) {
+    await render("naive_lego", idx);
+  }
+  console.log(times);
+  let t = 0;
+  times.forEach(time => {t += time});
+  console.log(t/times.length);
 }
 
 async function init() {

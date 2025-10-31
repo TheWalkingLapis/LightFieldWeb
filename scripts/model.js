@@ -6,6 +6,7 @@ let pts_tensor;
 let embb_pts_tensor;
 let gpu_tensors = {};
 
+
 async function evaluate(c2w_path="") {
   const pts = await sample(c2w_path); // TODO use pts from gpubuffer if reshape is baked into embedder
 
@@ -15,7 +16,7 @@ async function evaluate(c2w_path="") {
 
   const inferenceTime = (end - start)/1000;
   log(VB.TIME, "R2L Inference Time: ", inferenceTime);
-
+  times.push(inferenceTime)
 }
 
 async function loadC2W(url) {
