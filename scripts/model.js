@@ -18,14 +18,8 @@ async function evaluate() {
 
 }
 
-async function loadC2W(url) {
-  const response = await fetch(url);
-  const mat = await response.json();
-  return mat;
-}
-
 async function sample() {
-  const c2w = await loadC2W("pt/project_lego_gen_images/000_c2w.json"); //camera.get_c2w_as_input();
+  const c2w = camera.get_c2w_as_input();
   const c2w33 = new ort.Tensor('float32', c2w.map(row => row.slice(0, 3)).flat(), [3, 3]);
   const c2w13 = new ort.Tensor('float32', c2w.map(row => [row[3]]).flat(), [1, 3]);
 

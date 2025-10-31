@@ -158,9 +158,16 @@ async function render() {
       break;
 
     case RENDER_MODES.LIGHTING:
-      let tag = "project_chair";
-      let gt = true;
+      async function loadC2W(url) {
+        const response = await fetch(url);
+        const mat = await response.json();
+        return mat;
+      }
+      let tag = "project_lego";
+      let gt = false;
       for (let idx = 0; idx < 25; idx++) {
+        let c2w = await loadC2W("pt/"+tag+"_gen_images/"+idx.toString().padStart(3, '0')+"_c2w.json")
+        camera.c2w_to_position(c2w);
         const display_start_lighting = performance.now();
         await Promise.all([
           display_output_gpu("lighting", tag, idx, gt),

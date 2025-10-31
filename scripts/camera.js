@@ -15,6 +15,7 @@ class Camera {
     this.theta = Math.min(this.theta_max, Math.max(this.theta_min, theta));
     this.phi = Math.min(this.phi_max, Math.max(this.phi_min, phi));
     this.c2w = this.c2w_sphere(this.theta, this.phi, this.radius);
+    this.c2w_to_position(this.c2w);
   }
 
   rotate(delta_theta, delta_phi) {
@@ -30,6 +31,7 @@ class Camera {
     }
     this.phi = Math.min(this.phi_max, Math.max(this.phi_min, this.phi));
     this.c2w = this.c2w_sphere(this.theta, this.phi, this.radius);
+    this.c2w_to_position(this.c2w);
   }
 
   normalize(vec) {
@@ -81,7 +83,11 @@ class Camera {
   }
 
   get_position() {
-    return this.c2w.map(row => [row[3]]).flat();
+    return this.position;
+  }
+
+  c2w_to_position(c2w) {
+    this.position = c2w.map(row => [row[3]]).flat();
   }
 
   mousedown_hook(event) {
