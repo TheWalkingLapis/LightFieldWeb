@@ -16,7 +16,7 @@ async function evaluate(c2w_path="") {
 
   const inferenceTime = (end - start)/1000;
   log(VB.TIME, "R2L Inference Time: ", inferenceTime);
-  times.push(inferenceTime)
+  times["eval"].push(inferenceTime);
 }
 
 async function loadC2W(url) {

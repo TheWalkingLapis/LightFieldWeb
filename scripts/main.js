@@ -19,7 +19,7 @@ const VB = {
   NONE: 0
 }
 // everything >= verbose_level is printed
-const verbose_level = VB.STATUS;
+const verbose_level = VB.TIME;
 
 const RENDER_MODES = {
   CPU: "CPU",
@@ -29,19 +29,28 @@ const RENDER_MODES = {
 let render_mode = RENDER_MODES.LIGHTING;
 
 
-let times = [];
+let times = {"eval": [], "render": []};
 
 async function start_demo() {
   await init();
   await render("naive_lego", 1);
-  times = [];
+  // reset timers after inital render
+  times = {"eval": [], "render": []};
   for (let idx = 0; idx < 25; idx++) {
     await render("naive_lego", idx);
   }
   console.log(times);
-  let t = 0;
-  times.forEach(time => {t += time});
-  console.log(t/times.length);
+  Object.entries(times).forEach(timer => {
+    let key = timer[0];
+    let time_arr = timer[1];
+    console.log(time_arr);
+    let time_acc = 0;
+    time_arr.forEach(time => {
+      time_acc += time;
+    })
+    let mean_time = time_acc / time_arr.length;
+    console.log(key, ": ", mean_time);
+  });
 }
 
 async function init() {
@@ -181,6 +190,7 @@ async function render(tag, index) {
       const display_end_lighting = performance.now();
       const displayTimeLIGHTING = (display_end_lighting - display_start_lighting)/1000;
       log(VB.TIME, "Render Time (GPU): ", displayTimeLIGHTING);
+      times["render"].push(displayTimeLIGHTING);
       break;
   }
 }
