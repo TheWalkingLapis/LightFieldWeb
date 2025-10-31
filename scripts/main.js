@@ -26,12 +26,32 @@ const RENDER_MODES = {
   GPU: "GPU",
   LIGHTING: "LIGHTING"
 }
-let render_mode = RENDER_MODES.LIGHTING;
+let render_mode = RENDER_MODES.GPU;
+
+let times = {"eval": [], "render": []};
 
 async function start_demo() {
   await init();
-  await render();
+  await render(1);
+  // reset timers after inital render
+  times = {"eval": [], "render": []};
+  for (let idx = 0; idx < 25; idx++) {
+    await render(idx);
+  }
+  console.log(times);
+  Object.entries(times).forEach(timer => {
+    let key = timer[0];
+    let time_arr = timer[1];
+    console.log(time_arr);
+    let time_acc = 0;
+    time_arr.forEach(time => {
+      time_acc += time;
+    })
+    let mean_time = time_acc / time_arr.length;
+    console.log(key, ": ", mean_time);
+  });
 }
+
 
 async function init() {
 
@@ -122,12 +142,11 @@ async function init() {
 
     log(VB.INFO, "Renderer switched to Shader");
   });
-
-  render();
 }
 
-async function render() {
-  await evaluate();
+async function render(index) {
+  let path = "pt/gen_images/" + index.toString().padStart(3, '0') + "_c2w.json";
+  await evaluate(path);
 
   switch (render_mode) {
     case RENDER_MODES.CPU:
@@ -148,6 +167,7 @@ async function render() {
       const display_end_gpu = performance.now();
       const displayTimeGPU = (display_end_gpu - display_start_gpu)/1000;
       log(VB.TIME, "Render Time (GPU): ", displayTimeGPU);
+      times["render"].push(displayTimeGPU);
       break;
 
     case RENDER_MODES.LIGHTING:
