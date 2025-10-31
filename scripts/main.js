@@ -52,13 +52,13 @@ async function init() {
     log(VB.ERROR, "Detected Browser '", browser, "' is not supported and might not work properly. Use one of these browser: ", ...supported_browsers);
   }
 
-  Sampler = await ort.InferenceSession.create('./models/opset_11/all_outputs/Sampler.onnx', {
+  Sampler = await ort.InferenceSession.create('./models/naive/lego/Sampler.onnx', {
     executionProviders: [backend]
   });
-  Embedder = await ort.InferenceSession.create('./models/opset_11/all_outputs/Embedder.onnx', {
+  Embedder = await ort.InferenceSession.create('./models/naive/lego/Embedder.onnx', {
     executionProviders: [backend]
   });
-  R2LEngine = await ort.InferenceSession.create('./models/opset_11/all_outputs//ckpt.onnx', {
+  R2LEngine = await ort.InferenceSession.create('./models/naive/lego/Naive_lego.onnx', {
     executionProviders: [backend]
   });
   
