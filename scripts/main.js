@@ -1,4 +1,4 @@
-const canvas_callbacks = true;
+const canvas_callbacks = false;
 
 const backend = 'webgpu';
 let device;
@@ -30,7 +30,7 @@ let render_mode = RENDER_MODES.LIGHTING;
 
 async function start_demo() {
   await init();
-  await render();
+  await render("naive_lego", 0);
 }
 
 async function init() {
@@ -127,8 +127,9 @@ async function init() {
   });
 }
 
-async function render() {
-  await evaluate();
+async function render(tag, index) {
+  let path = "pt/" + tag + "_gen_images/" + index.toString().padStart(3, '0') + "_c2w.json";
+  await evaluate(path);
 
   switch (render_mode) {
     case RENDER_MODES.CPU:

@@ -6,8 +6,8 @@ let pts_tensor;
 let embb_pts_tensor;
 let gpu_tensors = {};
 
-async function evaluate() {
-  const pts = await sample(); // TODO use pts from gpubuffer if reshape is baked into embedder
+async function evaluate(c2w_path="") {
+  const pts = await sample(c2w_path); // TODO use pts from gpubuffer if reshape is baked into embedder
 
   const start = performance.now();
   await R2LEngine.run({ input: pts }, { rgb: gpu_tensors["rgb"], xyz: gpu_tensors["xyz"], normal: gpu_tensors["normal"], mask: gpu_tensors["mask"] });
@@ -18,8 +18,15 @@ async function evaluate() {
 
 }
 
-async function sample() {
-  const c2w = camera.get_c2w_as_input();
+async function loadC2W(url) {
+  const response = await fetch(url);
+  const mat = await response.json();
+  return mat;
+}
+
+async function sample(c2w_path="") {
+  const c2w = c2w_path == "" ? camera.get_c2w_as_input() : await loadC2W(c2w_path);
+  camera.c2w_to_position(c2w);
   const c2w33 = new ort.Tensor('float32', c2w.map(row => row.slice(0, 3)).flat(), [3, 3]);
   const c2w13 = new ort.Tensor('float32', c2w.map(row => [row[3]]).flat(), [1, 3]);
 
