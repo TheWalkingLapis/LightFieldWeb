@@ -33,11 +33,11 @@ let times = {"eval": [], "render": []};
 
 async function start_demo() {
   await init();
-  await render("naive_chair", 1);
+  await render("project_lego", 1);
   // reset timers after inital render
   times = {"eval": [], "render": []};
   for (let idx = 0; idx < 25; idx++) {
-    await render("naive_chair", idx);
+    await render("project_lego", idx);
   }
   console.log(times);
   Object.entries(times).forEach(timer => {
@@ -72,13 +72,13 @@ async function init() {
     log(VB.ERROR, "Detected Browser '", browser, "' is not supported and might not work properly. Use one of these browser: ", ...supported_browsers);
   }
 
-  Sampler = await ort.InferenceSession.create('./models/naive/chair/Sampler.onnx', {
+  Sampler = await ort.InferenceSession.create('./models/project/lego/Sampler.onnx', {
     executionProviders: [backend]
   });
-  Embedder = await ort.InferenceSession.create('./models/naive/chair/Embedder.onnx', {
+  Embedder = await ort.InferenceSession.create('./models/project/lego/Embedder.onnx', {
     executionProviders: [backend]
   });
-  R2LEngine = await ort.InferenceSession.create('./models/naive/chair/Naive_chair.onnx', {
+  R2LEngine = await ort.InferenceSession.create('./models/project/lego/Project_lego.onnx', {
     executionProviders: [backend]
   });
   
