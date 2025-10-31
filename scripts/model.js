@@ -18,8 +18,14 @@ async function evaluate() {
 
 }
 
+async function loadC2W(url) {
+  const response = await fetch(url);
+  const mat = await response.json();
+  return mat;
+}
+
 async function sample() {
-  const c2w = camera.get_c2w_as_input();
+  const c2w = await loadC2W("pt/project_lego_gen_images/000_c2w.json"); //camera.get_c2w_as_input();
   const c2w33 = new ort.Tensor('float32', c2w.map(row => row.slice(0, 3)).flat(), [3, 3]);
   const c2w13 = new ort.Tensor('float32', c2w.map(row => [row[3]]).flat(), [1, 3]);
 
@@ -39,18 +45,21 @@ async function sample() {
   return gpu_tensors["embb_pts"].reshape([1, 312, 100, 100]);
 }
 
-async function save_outputs() {
-  async function save_tensor_as_bin(key, filename) {
-    const data = await gpu_tensors[key].toData();
-    const blob = new Blob([data.buffer], { type: "application/octet-stream" });
-
+async function save_output(idx, gt) {
+  async function save_png(filename) {
+    const canvas = gpu_canvas_struct["lighting"].ctx.canvas;
+    const url = canvas.toDataURL("image/png");
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
+    a.href = url;
     a.download = filename;
+    document.body.appendChild(a);
     a.click();
+    a.remove();
   }
-  save_tensor_as_bin("rgb", "rgb.bin")
-  save_tensor_as_bin("xyz", "xyz.bin")
-  save_tensor_as_bin("normal", "normal.bin")
-  save_tensor_as_bin("mask", "mask.bin")
+    
+  if (gt) {
+    save_png(idx+"_rgb_gt.png")
+  } else {
+    save_png(idx+"_rgb.png")
+  }
 }

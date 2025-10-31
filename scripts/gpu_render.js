@@ -64,6 +64,39 @@ async function init_gpu_render() {
   }
 }
 
+async function copy_png_to_texture(key, texture, tag, index, gt=true) {
+  let path = "pt/" + tag + "_gen_images/" + index.toString().padStart(3, '0') + "_"
+  switch(key) {
+    case "rgb": 
+      path += "rgb";
+      break;
+    case "xyz": 
+      path += "xyz";
+      break;
+    case "normal": 
+      path += "n";
+      break;
+    case "mask": 
+      path += "mask";
+      break;
+  }
+  if(gt) {
+    path += "_gt";
+  }
+  path += ".png";
+
+  console.log(path)
+  const resp = await fetch(path);
+  const blob = await resp.blob();
+  const bitmap = await createImageBitmap(blob);
+
+  device.queue.copyExternalImageToTexture(
+    { source: bitmap },                        
+    { texture: texture, origin: { x: 0, y: 0, z: 0 } }, 
+    { width: bitmap.width, height: bitmap.height, depthOrArrayLayers: 1 }
+  );
+}
+
 async function create_gpu_intermediate_texture(key) {
   const tex = device.createTexture({
     size: [800, 800],
@@ -94,7 +127,7 @@ async function create_gpu_canvas(key) {
   gpu_canvas_struct[key] = {"ctx": ctx};
 }
 
-async function display_output_gpu(key = "") {
+async function display_output_gpu(key = "", tag="project_lego", index=0, gt=true) {
   
   const format = navigator.gpu.getPreferredCanvasFormat();
 
@@ -107,10 +140,10 @@ async function display_output_gpu(key = "") {
       const normal_texture = intermediate_gpu_textures["normal"];
       const mask_texture = intermediate_gpu_textures["mask"];
 
-      await dispatch_buffer_to_texture("rgb", rgb_texture);
-      await dispatch_buffer_to_texture("xyz", xyz_texture);
-      await dispatch_buffer_to_texture("normal", normal_texture);
-      await dispatch_buffer_to_texture("mask", mask_texture);
+      await copy_png_to_texture("rgb", rgb_texture, tag, index, gt);
+      await copy_png_to_texture("xyz", xyz_texture, tag, index), gt;
+      await copy_png_to_texture("normal", normal_texture, tag, index, gt);
+      await copy_png_to_texture("mask", mask_texture, tag, index, gt);
 
       const lighting_shaderModule = device.createShaderModule({ code: lighting_shader_code });
 
@@ -187,7 +220,7 @@ async function display_output_gpu(key = "") {
 
       const display_texture = intermediate_gpu_textures[key];
 
-      await dispatch_buffer_to_texture(key, display_texture);
+      await copy_png_to_texture(key, display_texture, tag, index, gt);
 
       const render_pipeline = webgpu_command_display_texture["pipeline"];
       const render_sampler = webgpu_command_display_texture["sampler"];

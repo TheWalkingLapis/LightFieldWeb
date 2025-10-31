@@ -58,7 +58,7 @@ async function init() {
   Embedder = await ort.InferenceSession.create('./models/naive/lego/Embedder.onnx', {
     executionProviders: [backend]
   });
-  R2LEngine = await ort.InferenceSession.create('./models/naive/lego/Naive_lego.onnx', {
+  R2LEngine = await ort.InferenceSession.create('./models/naive/lego/Model.onnx', {
     executionProviders: [backend]
   });
   
@@ -158,17 +158,23 @@ async function render() {
       break;
 
     case RENDER_MODES.LIGHTING:
-      const display_start_lighting = performance.now();
-      await Promise.all([
-        display_output_gpu("lighting"),
-        display_output_gpu("rgb"),
-        display_output_gpu("xyz"),
-        display_output_gpu("normal"),
-        display_output_gpu("mask")
-      ]);
-      const display_end_lighting = performance.now();
-      const displayTimeLIGHTING = (display_end_lighting - display_start_lighting)/1000;
-      log(VB.TIME, "Render Time (GPU): ", displayTimeLIGHTING);
+      let tag = "project_chair";
+      let gt = true;
+      for (let idx = 0; idx < 25; idx++) {
+        const display_start_lighting = performance.now();
+        await Promise.all([
+          display_output_gpu("lighting", tag, idx, gt),
+          display_output_gpu("rgb", tag, idx, gt),
+          display_output_gpu("xyz", tag, idx, gt),
+          display_output_gpu("normal", tag, idx, gt),
+          display_output_gpu("mask", tag, idx, gt)
+        ]);
+        const display_end_lighting = performance.now();
+        const displayTimeLIGHTING = (display_end_lighting - display_start_lighting)/1000;
+        log(VB.TIME, "Render Time (GPU): ", displayTimeLIGHTING);
+        //save_output(idx.toString().padStart(3, '0'), gt);
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
       break;
   }
 }
