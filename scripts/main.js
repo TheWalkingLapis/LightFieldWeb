@@ -36,8 +36,8 @@ async function start_demo() {
   await render("project_lego", 1);
   // reset timers after inital render
   times = {"eval": [], "render": []};
-  for (let idx = 0; idx < 25; idx++) {
-    await render("project_lego", idx);
+  for (let idx = 0; idx < 12; idx++) {
+    await render("project_lego", idx+3);
   }
   console.log(times);
   Object.entries(times).forEach(timer => {
